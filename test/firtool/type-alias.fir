@@ -1,4 +1,6 @@
 ; RUN: firtool %s --preserve-aggregate=all --scalarize-top-module=false -ir-fir | FileCheck %s
+; RUN: firtool %s --preserve-aggregate=all --scalarize-top-module=false --verilog | FileCheck %s --check-prefixes=VERILOG
+
 
 FIRRTL version 3.0.0
 circuit Top :
@@ -15,6 +17,16 @@ circuit Top :
   ; CHECK-SAME: out %o1: !firrtl.uint<1>
   ; CHECK-SAME: out %o2: !firrtl.uint<3>
   ; CHECK-SAME: out %o3: !firrtl.uint<3>
+  ; VERILOG:   typedef struct packed {logic a; } Passive;
+  ; VERILOG:   typedef logic [1:0] UInt2;
+  ; VERILOG: module Top(
+  ; VERILOG:   input  Passive                   in,
+  ; VERILOG:   input  UInt2                     u2,
+  ; VERILOG:   output struct packed {logic a; } out_a,
+  ; VERILOG:   output                           o1,
+  ; VERILOG:   output [2:0]                     o2,
+  ; VERILOG:                                    o3
+  ; VERILOG: );
   module Top :
     input in: Passive
     input u2: UInt2

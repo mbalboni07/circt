@@ -10,6 +10,10 @@ firrtl.circuit "Simple"   attributes {annotations = [{class =
 "sifive.enterprise.firrtl.ExtractAssertionsAnnotation", directory = "dir3",  filename = "./dir3/filename3" }]}
 {
   // Headers
+  // CHECK: hw.type_scope @Simple__TYPESCOPE_ {
+  // CHECK:   hw.typedecl @Data : !hw.struct<a: i1, b: !hw.array<2xi1>>
+  // CHECK:   hw.typedecl @uint4 : i4
+  // CHECK: }
   // CHECK:      sv.ifdef  "PRINTF_COND_" {
   // CHECK-NEXT: } else {
   // CHECK-NEXT:   sv.ifdef  "PRINTF_COND" {
@@ -1679,5 +1683,30 @@ firrtl.circuit "Simple"   attributes {annotations = [{class =
     // CHECK-NEXT: %[[XOR:.+]] = hw.bitcast %10 : (i2) -> !hw.array<2xi1>
 
     // CHECK-NEXT: hw.output %[[OR]], %[[AND]], %[[XOR]] : !hw.array<2xi1>, !hw.array<2xi1>, !hw.array<2xi1>
+  }
+  // CHECK: hw.module private @Child(%in: !hw.typealias<@Simple__TYPESCOPE_::@Data, !hw.struct<a: i1, b: !hw.array<2xi1>>>) {
+  firrtl.module private @Child(in %in: !firrtl.alias<Data, bundle<a: uint<1>, b: vector<uint<1>, 2>>>) {
+    %0 = firrtl.subfield %in[a] : !firrtl.alias<Data, bundle<a: uint<1>, b: vector<uint<1>, 2>>>
+    %2 = firrtl.subfield %in[b] : !firrtl.alias<Data, bundle<a: uint<1>, b: vector<uint<1>, 2>>>
+  }
+  firrtl.module private @Probe(in %in: !firrtl.alias<Data, bundle<a: uint<1>, b: vector<uint<1>, 2>>>, out %mixed_a: !firrtl.uint<1>, out %mixed_b: !firrtl.vector<uint<1>, 2>) {
+    %c1_in = firrtl.instance c1 @Child(in in: !firrtl.alias<Data, bundle<a: uint<1>, b: vector<uint<1>, 2>>>)
+    %c2_in = firrtl.instance c2 @Child(in in: !firrtl.alias<Data, bundle<a: uint<1>, b: vector<uint<1>, 2>>>)
+    firrtl.strictconnect %c1_in, %in : !firrtl.alias<Data, bundle<a: uint<1>, b: vector<uint<1>, 2>>>
+    firrtl.strictconnect %c2_in, %in : !firrtl.alias<Data, bundle<a: uint<1>, b: vector<uint<1>, 2>>>
+  }
+  // CHECK: hw.module @Bundle(%in1: !hw.typealias<@Simple__TYPESCOPE_::@uint4, i4>)
+  firrtl.module @Bundle(in %in1 : !firrtl.alias<uint4, uint<4>> ) {
+    // CHECK-NEXT: %z_i1 = sv.constantZ : !hw.typealias<@__TYPESCOPE_::@uint1, i1>
+    // CHECK-NEXT: hw.type_scope @__TYPESCOPE_ {
+    // CHECK-NEXT:   hw.typedecl @uint1 : i1
+    // CHECK-NEXT: }
+    %p_in, %p_mixed_a, %p_mixed_b = firrtl.instance p sym @xmr_sym @Probe(in in: !firrtl.alias<Data, bundle<a: uint<1>, b: vector<uint<1>, 2>>>, out mixed_a: !firrtl.uint<1>, out mixed_b: !firrtl.vector<uint<1>, 2>)
+    %36 = firrtl.bundlecreate %p_mixed_a, %p_mixed_b : (!firrtl.uint<1>, !firrtl.vector<uint<1>, 2>) -> !firrtl.alias<Data, bundle<a: uint<1>, b: vector<uint<1>, 2>>>
+    // CHECK: %w1 = hw.wire %in1  : !hw.typealias<@Simple__TYPESCOPE_::@uint4, i4>
+    %w1 = firrtl.wire : !firrtl.alias<uint4, uint<4>>
+    firrtl.connect %w1, %in1 : !firrtl.alias<uint4, uint<4>>, !firrtl.alias<uint4, uint<4>>
+    %w2 = firrtl.wire : !firrtl.alias<uint1, uint<1>>
+    // CHECK: %w2 = hw.wire %z_i1  : !hw.typealias<@__TYPESCOPE_::@uint1, i1>
   }
 }
