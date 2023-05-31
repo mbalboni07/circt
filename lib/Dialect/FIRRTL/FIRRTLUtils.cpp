@@ -841,8 +841,7 @@ Type circt::firrtl::lowerType(
   if (!firType)
     return type;
 
-  if (BaseTypeAliasType aliasType =
-          firrtl::type_dyn_cast<BaseTypeAliasType>(firType)) {
+  if (BaseTypeAliasType aliasType = dyn_cast<BaseTypeAliasType>(firType)) {
     type = lowerType(aliasType.getInnerType(), loc, getTypeDeclFn);
     if (!loc)
       loc = UnknownLoc::get(type.getContext());
