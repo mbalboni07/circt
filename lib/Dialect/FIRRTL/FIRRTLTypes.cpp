@@ -2349,6 +2349,9 @@ std::optional<int64_t> firrtl::getBitWidth(FIRRTLBaseType type,
         })
         .Case<IntType>([&](IntType iType) { return iType.getWidth(); })
         .Case<ClockType, ResetType, AsyncResetType>([](Type) { return 1; })
+        .Case<BaseTypeAliasType>([&](BaseTypeAliasType aliasType) {
+          return getWidth(aliasType.getInnerType());
+        })
         .Default([&](auto t) { return std::nullopt; });
   };
   return getWidth(type);
