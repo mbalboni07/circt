@@ -12,6 +12,7 @@
 
 #include "circt/Dialect/Comb/CombOps.h"
 #include "circt/Dialect/HW/HWOps.h"
+#include "circt/Dialect/HW/HWTypes.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/ImplicitLocOpBuilder.h"
 #include "mlir/IR/PatternMatch.h"
@@ -235,7 +236,7 @@ bool XorOp::isBinaryNot() {
 static unsigned getTotalWidth(ValueRange inputs) {
   unsigned resultWidth = 0;
   for (auto input : inputs) {
-    resultWidth += input.getType().cast<IntegerType>().getWidth();
+    resultWidth += hw::getBitWidth(input.getType());
   }
   return resultWidth;
 }
