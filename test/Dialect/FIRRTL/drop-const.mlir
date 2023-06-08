@@ -1,4 +1,4 @@
-// RUN: circt-opt --pass-pipeline='builtin.module(firrtl.circuit(any(firrtl-drop-const)))' %s | FileCheck %s --implicit-check-not=const.
+// RUN: circt-opt --pass-pipeline='builtin.module(firrtl.circuit(any(firrtl-drop-const)))' --split-input-file --verify-diagnostics %s | FileCheck %s --implicit-check-not=const.
 firrtl.circuit "DropConst" {
 firrtl.module @DropConst() {}
 
@@ -86,5 +86,14 @@ firrtl.module @ConstDropInWhenBlock(in %cond: !firrtl.const.uint<1>, in %in1: !f
     // CHECK: firrtl.strictconnect %out, %in2 : !firrtl.sint<2>
     firrtl.strictconnect %out, %in2 : !firrtl.const.sint<2>
   }
+}
+}
+
+// -----
+
+firrtl.circuit "CheckNonConstAsyncReset" {
+firrtl.module @CheckNonConstAsyncReset(in %a: !firrtl.uint<1>, in %clock: !firrtl.clock, in %reset: !firrtl.asyncreset) attributes {convention = #firrtl<convention scalarized>} {
+  // @expected-error @+1 {{register "r" has an async reset, but its reset value is not 'const'}}
+  %r = firrtl.regreset interesting_name %clock, %reset, %a : !firrtl.clock, !firrtl.asyncreset, !firrtl.uint<1>, !firrtl.uint<1>
 }
 }
