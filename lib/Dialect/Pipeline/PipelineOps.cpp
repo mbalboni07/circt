@@ -42,14 +42,17 @@ static LogicalResult verifyPipeline(PipelineLike op) {
   }
 
   Block *entryStage = op.getEntryStage();
-  if (entryStage->getNumArguments() != op.getInputs().size())
+  llvm::SmallVector<Type> expectedInArgTypes;
+  llvm::append_range(expectedInArgTypes, op.getInputs().getTypes());
+  llvm::append_range(expectedInArgTypes, op.getExtInputs().getTypes());
+  size_t expectedNumArgs = expectedInArgTypes.size();
+  if (entryStage->getNumArguments() != expectedNumArgs)
     return op.emitOpError("expected ")
-           << op.getInputs().size()
-           << " arguments in the pipeline body block, got "
+           << expectedNumArgs << " arguments in the pipeline body block, got "
            << entryStage->getNumArguments() << ".";
 
-  for (size_t i = 0; i < op.getInputs().size(); i++) {
-    Type expectedInArg = op.getInputs()[i].getType();
+  for (size_t i = 0; i < expectedNumArgs; i++) {
+    Type expectedInArg = expectedInArgTypes[i];
     Type bodyArg = entryStage->getArgument(i).getType();
 
     if (op.isLatencyInsensitive())
@@ -79,21 +82,32 @@ bool UnscheduledPipelineOp::isLatencyInsensitive() {
 // ScheduledPipelineOp
 //===----------------------------------------------------------------------===//
 
-void ScheduledPipelineOp::build(mlir::OpBuilder &odsBuilder,
-                                mlir::OperationState &odsState,
-                                ::mlir::TypeRange results,
-                                mlir::ValueRange inputs, mlir::Value clock,
-                                mlir::Value reset) {
+void ScheduledPipelineOp::build(OpBuilder &odsBuilder, OperationState &odsState,
+                                TypeRange results, ValueRange inputs,
+                                ValueRange extInputs, Value clock,
+                                Value reset) {
   odsState.addOperands(inputs);
+  odsState.addOperands(extInputs);
   odsState.addOperands(clock);
   odsState.addOperands(reset);
+  odsState.addAttribute(
+      "operand_segment_sizes",
+      odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(inputs.size()),
+                                       static_cast<int32_t>(extInputs.size()),
+                                       static_cast<int32_t>(1),
+                                       static_cast<int32_t>(1)}));
   auto *region = odsState.addRegion();
   odsState.addTypes(results);
 
   // Add the entry stage
   auto &entryBlock = region->emplaceBlock();
   llvm::SmallVector<Location> entryArgLocs(inputs.size(), odsState.location);
-  entryBlock.addArguments(inputs.getTypes(), entryArgLocs);
+  entryBlock.addArguments(
+      inputs.getTypes(),
+      llvm::SmallVector<Location>(inputs.size(), odsState.location));
+  entryBlock.addArguments(
+      extInputs.getTypes(),
+      llvm::SmallVector<Location>(extInputs.size(), odsState.location));
 }
 
 Block *ScheduledPipelineOp::addStage() {
@@ -133,6 +147,11 @@ LogicalResult ScheduledPipelineOp::verify() {
   if (failed(verifyPipeline(*this)))
     return failure();
 
+  // Cache external inputs in a set for fast lookup.
+  llvm::DenseSet<Value> extInputs;
+  for (auto extInput : getInnerExtInputs())
+    extInputs.insert(extInput);
+
   // Phase invariant - if any block has arguments, we
   bool materialized = isMaterialized();
   if (materialized) {
@@ -146,6 +165,9 @@ LogicalResult ScheduledPipelineOp::verify() {
             if (definingOp->hasTrait<OpTrait::ConstantLike>())
               continue;
             err = definingOp->getBlock() != &stage;
+          } else if (extInputs.contains(operand)) {
+            // This is an external input; legal to reference everywhere.
+            continue;
           } else {
             // This is a block argument;
             err = !llvm::is_contained(stage.getArguments(), operand);

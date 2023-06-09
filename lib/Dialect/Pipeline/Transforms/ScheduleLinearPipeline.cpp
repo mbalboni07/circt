@@ -138,7 +138,7 @@ ScheduleLinearPipelinePass::schedulePipeline(UnscheduledPipelineOp pipeline) {
   b.setInsertionPoint(pipeline);
   auto schedPipeline = b.template create<pipeline::ScheduledPipelineOp>(
       pipeline.getLoc(), pipeline->getResultTypes(), pipeline.getInputs(),
-      pipeline.getClock(), pipeline.getReset());
+      pipeline.getExtInputs(), pipeline.getClock(), pipeline.getReset());
 
   Block *currentStage = schedPipeline.getStage(0);
 

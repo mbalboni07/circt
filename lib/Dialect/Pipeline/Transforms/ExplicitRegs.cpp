@@ -85,12 +85,21 @@ void ExplicitRegsPass::runOnOperation() {
   OpBuilder b(getOperation().getContext());
   bb = std::make_shared<BackedgeBuilder>(b, getOperation().getLoc());
 
+  // Cache external inputs in a set for fast lookup.
+  llvm::DenseSet<Value> extInputs;
+  for (auto extInput : pipeline.getInnerExtInputs())
+    extInputs.insert(extInput);
+
   // Iterate over the pipeline body in-order (!).
   for (Block *stage : pipeline.getOrderedStages()) {
     for (auto &op : *stage) {
       // Check the operands of this operation to see if any of them cross a
       // stage boundary.
       for (OpOperand &operand : op.getOpOperands()) {
+        if (extInputs.contains(operand.get())) {
+          // Never route external inputs through a stage.
+          continue;
+        }
         Value reroutedValue = routeThroughStage(operand.get(), stage);
         if (reroutedValue != operand.get())
           op.setOperand(operand.getOperandNumber(), reroutedValue);
