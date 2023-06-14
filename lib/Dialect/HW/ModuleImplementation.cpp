@@ -109,8 +109,6 @@ ParseResult module_like_impl::parseModuleFunctionSignature(
   // Process the ssa args for the information we're looking for.
   SmallVector<Type> argTypes;
   for (auto &arg : args) {
-    llvm::errs() << "Argument " << arg.ssaName.name << " location "
-                 << arg.sourceLoc << "\n";
     argNames.push_back(getPortNameAttr(context, arg.ssaName.name));
     argTypes.push_back(arg.type);
     if (!arg.sourceLoc)

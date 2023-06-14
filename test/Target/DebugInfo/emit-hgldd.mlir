@@ -10,3 +10,7 @@ hw.module @Foo(%a: i32 loc(#loc2)) -> (b: i32 loc(#loc3)) {
   hw.output %0 : i32 loc(#loc1)
 } loc(#loc1)
 
+
+// How does this look without debug info?
+// How can this be given custom debug info?
+// How can this represent inlining?

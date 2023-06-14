@@ -20,6 +20,7 @@ target_link_libraries(circt-opt
   CIRCTConvertToArcs
   CIRCTDC
   CIRCTDCTransforms
+  CIRCTDebug
   CIRCTESI
   CIRCTExportChiselInterface
   CIRCTExportVerilog

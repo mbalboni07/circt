@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "circt/Dialect/Comb/CombDialect.h"
+#include "circt/Dialect/Debug/DebugDialect.h"
 #include "circt/Dialect/HW/HWDialect.h"
 #include "circt/Dialect/SV/SVDialect.h"
 #include "circt/Dialect/Seq/SeqDialect.h"
@@ -25,6 +26,7 @@ void registerHGLDDTranslation() {
       [](ModuleOp op, raw_ostream &output) { return emitHGLDD(op, output); },
       [](DialectRegistry &registry) {
         // clang-format off
+        registry.insert<debug::DebugDialect>();
         registry.insert<hw::HWDialect>();
         registry.insert<comb::CombDialect>();
         registry.insert<seq::SeqDialect>();
